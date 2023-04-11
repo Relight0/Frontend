@@ -24,7 +24,7 @@ jobs:
 
   - task: AWSShellScript@1
     inputs:
-      awsCredentials: 'MyAWSServiceConnection'
+      awsCredentials: 'AWS'
       regionName: 'us-west-2'
       scriptType: 'inline'
       inlineScript: 'aws s3 sync . s3://s3andcloudfront-mybucketwebstaticproyectofinalmig-1wtdeqc95fze4 --exclude ".git/*" --exclude ".gitignore" --exclude "azure-pipelines.yml"'
