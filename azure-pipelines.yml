@@ -1,64 +1,18 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
   branches:
     include:
-      - main
-  paths:
-    exclude:
-      - '.yml'
-      - '.json'
-      - .gitignore
+    - main # Reemplaza 'main' con el nombre de la rama principal de tu repositorio, si es diferente
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
-stages:
-  - stage: build
-    jobs: 
-    - job: build
-      steps:
-        - task: NodeTool@0
-          inputs:
-            versionSource: 'spec'
-            versionSpec: '18.x'
-        - task: Npm@1
-          inputs:
-            command: 'install'
-        - script: |
-            npm run-script build
-        - task: CopyFiles@2
-          inputs:
-            SourceFolder: '$(Build.SourcesDirectory)'
-            Contents: 'build/'
-            TargetFolder: '$(Build.ArtifactStagingDirectory)'
+steps:
+- task: AWSShellScript@1
+  inputs:
+    awsCredentials: 'MyAWSServiceConnection' # Reemplaza esto con el nombre de tu conexión de servicio de AWS
+    regionName: 'us-east-2' # Reemplaza esto con la región de tu bucket de S3
+    scriptType: 'inline'
+    inlineScript: |
+      aws s3 sync . s3://s3andcloudfront-mybucketwebstaticproyectofinalmig-1wtdeqc95fze4 --delete --exclude ".git/*" --exclude "node_modules/*" --exclude "build/*"
+  displayName: 'Sincronizar archivos del repositorio con el bucket de Amazon S3'
 
-        - task: PublishBuildArtifacts@1
-          inputs:
-            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-            ArtifactName: 'build'
-            publishLocation: 'Container'
-
-  - stage: deploy
-    jobs:
-    - job: deploy
-      steps: 
-        - download: current
-          artifact: build
-        - task: S3Upload@1
-          inputs:
-            awsCredentials: 'AWS'
-            regionName: 'us-east-2'
-            bucketName: 's3andcloudfront-mybucketwebstaticproyectofinalmig-1wtdeqc95fze4'
-            sourceFolder: '$(Pipeline.Workspace)/build/build/'
-            globExpressions: ''
-        - task: AWSCLI@1
-          inputs:
-            awsCredentials: 'AWS'
-            regionName: 'us-east-2'
-            awsCommand: 'cloudfront'
-            awsSubCommand: 'create-invalidation'
-            awsArguments: '--distribution-id EOY0VWPJR6Z1F --paths /*'
