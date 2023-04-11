@@ -1,0 +1,64 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - '.yml'
+      - '.json'
+      - .gitignore
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: build
+    jobs: 
+    - job: build
+      steps:
+        - task: NodeTool@0
+          inputs:
+            versionSource: 'spec'
+            versionSpec: '18.x'
+        - task: Npm@1
+          inputs:
+            command: 'install'
+        - script: |
+            npm run-script build
+        - task: CopyFiles@2
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)'
+            Contents: 'build/'
+            TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+            ArtifactName: 'build'
+            publishLocation: 'Container'
+
+  - stage: deploy
+    jobs:
+    - job: deploy
+      steps: 
+        - download: current
+          artifact: build
+        - task: S3Upload@1
+          inputs:
+            awsCredentials: 'AWS'
+            regionName: 'us-east-2'
+            bucketName: 's3andcloudfront-mybucketwebstaticproyectofinalmig-1wtdeqc95fze4'
+            sourceFolder: '$(Pipeline.Workspace)/build/build/'
+            globExpressions: ''
+        - task: AWSCLI@1
+          inputs:
+            awsCredentials: 'AWS'
+            regionName: 'us-east-2'
+            awsCommand: 'cloudfront'
+            awsSubCommand: 'create-invalidation'
+            awsArguments: '--distribution-id EOY0VWPJR6Z1F --paths /*'
